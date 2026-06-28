@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPM — Validación Colombia</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #F0F2F5; color: #1A1A2E; min-height: 100vh; }
+
+  .shell { display: grid; grid-template-columns: 240px 1fr; grid-template-rows: 56px 1fr; min-height: 100vh; }
+
+  .topbar { grid-column: 1/-1; background: #0D1B3E; display: flex; align-items: center; padding: 0 24px; gap: 14px; border-bottom: 2px solid #1A3A7A; }
+  .topbar-logo { width:32px;height:32px;background:#2563EB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0; }
+  .topbar-title { font-size:15px;font-weight:600;color:#fff; }
+  .topbar-sub { font-size:12px;color:#6B8CC4; }
+  .topbar-spacer { flex:1; }
+  .topbar-badge { background:#1E3A6E;color:#93B4E8;border:1px solid #2A4F8F;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600; }
+
+  .sidebar { background:#fff;border-right:1px solid #E2E8F0;padding:20px 0;overflow-y:auto; }
+  .nav-section-label { font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.08em;padding:0 20px;margin-bottom:6px;margin-top:16px; }
+  .nav-section-label:first-child { margin-top:0; }
+  .nav-item { display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;font-size:13px;color:#475569;border-left:3px solid transparent;transition:background .12s,color .12s;user-select:none; }
+  .nav-item:hover { background:#F1F5F9;color:#1E293B; }
+  .nav-item.active { background:#EFF6FF;color:#1D4ED8;border-left-color:#2563EB;font-weight:600; }
+  .nav-icon { width:18px;height:18px;flex-shrink:0;opacity:.7; }
+  .nav-item.active .nav-icon { opacity:1; }
+
+  .main { overflow-y:auto;padding:28px 32px;max-width:860px; }
+
+  .section-header { margin-bottom:20px; }
+  .section-eyebrow { font-size:11px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px; }
+  .section-title { font-size:22px;font-weight:700;color:#0D1B3E; }
+  .section-sub { font-size:13px;color:#64748B;margin-top:3px; }
+
+  .card { background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px 20px;margin-bottom:16px; }
+  .card-title { font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;display:flex;align-items:center;gap:8px; }
+  .card-title::after { content:'';flex:1;height:1px;background:#F1F5F9; }
+
+  .form-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+  .form-group { display:flex;flex-direction:column;gap:5px; }
+  .form-group label { font-size:12px;font-weight:600;color:#374151; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea { padding:8px 11px;border:1.5px solid #D1D5DB;border-radius:7px;font-size:13px;font-family:inherit;color:#1A1A2E;background:#fff;outline:none;transition:border-color .15s,box-shadow .15s; }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  .form-group textarea { resize:vertical;min-height:58px; }
+
+  .ipm-row { display:flex;align-items:center;padding:9px 0;border-bottom:1px solid #F1F5F9;gap:8px; }
+  .ipm-row:last-child { border-bottom:none; }
+  .ipm-label { font-size:13px;color:#1E293B;flex:1; }
+  .ipm-pts { font-size:11px;color:#94A3B8;font-weight:600;min-width:72px;text-align:right;margin-right:8px; }
+
+  .seg { display:inline-flex;border-radius:7px;border:1.5px solid #D1D5DB;overflow:hidden;flex-shrink:0;background:#F8FAFC; }
+  .seg button { padding:5px 14px;border:none;background:transparent;font-size:12px;font-family:inherit;font-weight:500;cursor:pointer;color:#64748B;transition:background .12s,color .12s;white-space:nowrap;line-height:1.4; }
+  .seg button:not(:last-child) { border-right:1.5px solid #D1D5DB; }
+  .seg button[data-sel="1"]    { background:#2563EB;color:#fff;font-weight:600; }
+  .seg button[data-sel="warn"] { background:#92400E;color:#FDE68A;font-weight:600; }
+  .seg button[data-sel="red"]  { background:#991B1B;color:#FEE2E2;font-weight:600; }
+  .seg button[data-sel="uci"]  { background:#B45309;color:#fff;font-weight:600; }
+  .seg button[data-sel="pos"]  { background:#166534;color:#fff;font-weight:600; }
+
+  .score-box { background:linear-gradient(135deg,#0D1B3E 0%,#1A3A7A 100%);border-radius:12px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;color:#fff; }
+  .score-label { font-size:12px;color:#93B4E8;margin-bottom:4px; }
+  .score-num { font-size:48px;font-weight:800;letter-spacing:-1px;line-height:1; }
+  .score-max { font-size:16px;color:#6B8CC4;font-weight:400;margin-left:4px; }
+  .risk-pill { padding:8px 18px;border-radius:24px;font-size:13px;font-weight:700; }
+  .risk-lo { background:#D1FAE5;color:#065F46; }
+  .risk-hi { background:#FEE2E2;color:#991B1B; }
+
+  .chip-group { display:flex;flex-wrap:wrap;gap:7px;margin-top:4px; }
+  .chip { padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid #D1D5DB;background:#F8FAFC;color:#475569;user-select:none;transition:background .1s,color .1s,border-color .1s; }
+  .chip.on { background:#2563EB;color:#fff;border-color:#2563EB;font-weight:600; }
+
+  .germ-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px; }
+  .gc { padding:6px 8px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1.5px solid #D1D5DB;background:#F8FAFC;color:#475569;text-align:center;user-select:none;transition:background .1s,color .1s,border-color .1s;line-height:1.3; }
+  .gc.on { background:#2563EB;color:#fff;border-color:#2563EB;font-weight:600; }
+
+  .micro-label { font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px; }
+  .micro-label:first-child { margin-top:4px; }
+
+  /* ---- GERMEN CARD (polimicrobiano) ---- */
+  .germ-card { background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:10px;padding:14px 16px;margin-bottom:10px; }
+  .germ-card-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:10px; }
+  .germ-card-num { font-size:11px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.05em; }
+  .btn-remove-germ { background:none;border:1px solid #FECACA;color:#DC2626;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit; }
+  .btn-add-germ { display:flex;align-items:center;gap:6px;background:#EFF6FF;border:1.5px dashed #93C5FD;color:#1D4ED8;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;width:100%;justify-content:center;font-family:inherit;transition:background .1s; }
+  .btn-add-germ:hover { background:#DBEAFE; }
+
+  .btn-row { display:flex;gap:10px;justify-content:flex-end;margin-top:4px; }
+  .btn { padding:9px 22px;border-radius:8px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;border:none;transition:opacity .15s,transform .1s; }
+  .btn:active { transform:scale(.98); }
+  .btn-primary { background:#2563EB;color:#fff; }
+  .btn-primary:hover { opacity:.88; }
+  .btn-ghost { background:#fff;color:#374151;border:1.5px solid #D1D5DB; }
+  .btn-ghost:hover { background:#F8FAFC; }
+  .btn-success { background:#16A34A;color:#fff; }
+  .btn-success:hover { opacity:.88; }
+  .btn-danger { background:#fff;color:#DC2626;border:1.5px solid #FECACA; }
+  .btn-del { background:none;border:1px solid #FECACA;color:#DC2626;padding:3px 9px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit; }
+
+  .alert { padding:11px 15px;border-radius:8px;font-size:13px;margin-bottom:16px;font-weight:500; }
+  .al-ok   { background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7; }
+  .al-info { background:#DBEAFE;color:#1E40AF;border:1px solid #93C5FD; }
+  .al-warn { background:#FEF3C7;color:#92400E;border:1px solid #FCD34D; }
+  .al-err  { background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5; }
+
+  .metric-row { display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px; }
+  .metric-card { background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px; }
+  .m-label { font-size:11px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px; }
+  .m-val { font-size:24px;font-weight:800;color:#0D1B3E; }
+  .m-sub { font-size:11px;color:#94A3B8;margin-top:2px; }
+
+  .stat-card { background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px 16px;margin-bottom:12px; }
+  .stat-row { display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:13px; }
+  .stat-row:last-child { border-bottom:none; }
+  .stat-k { color:#64748B; }
+  .stat-v { font-weight:700;color:#0D1B3E; }
+
+  .table-wrap { overflow-x:auto;border-radius:10px;border:1px solid #E2E8F0; }
+  table { width:100%;border-collapse:collapse;font-size:12px;background:#fff; }
+  th { text-align:left;padding:10px 12px;font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;background:#F8FAFC;border-bottom:1px solid #E2E8F0;white-space:nowrap; }
+  td { padding:9px 12px;border-bottom:1px solid #F1F5F9;vertical-align:middle;color:#1E293B; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#F8FAFC; }
+
+  .tag { display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600; }
+  .t-vivo   { background:#D1FAE5;color:#065F46; }
+  .t-muerto { background:#FEE2E2;color:#991B1B; }
+  .t-uci    { background:#FEF3C7;color:#92400E; }
+  .t-pos    { background:#DBEAFE;color:#1E40AF; }
+
+  .chart-wrap { position:relative;width:100%;height:220px;margin-bottom:16px; }
+  .divider { border:none;border-top:1px solid #E2E8F0;margin:20px 0; }
+  .two-col { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+  .two-col-stat { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+  .prog-wrap { background:#E2E8F0;border-radius:4px;height:8px;overflow:hidden;margin-bottom:4px; }
+  .prog-fill { height:100%;background:#2563EB;border-radius:4px;transition:width .3s; }
+  .empty { text-align:center;padding:48px 20px;color:#94A3B8; }
+  .empty-icon { font-size:48px;margin-bottom:12px; }
+  .empty-title { font-size:16px;font-weight:600;color:#64748B;margin-bottom:6px; }
+  .export-var-list { columns:2;gap:16px; }
+  .export-var-item { font-size:12px;color:#475569;padding:3px 0;break-inside:avoid; }
+  .export-var-item::before { content:'—  ';color:#CBD5E1; }
+  .an-title { font-size:14px;font-weight:700;color:#0D1B3E;margin-bottom:10px; }
+  .sub-label { font-size:12px;font-weight:600;color:#374151;margin:10px 0 6px; }
+  .hidden { display:none!important; }
+  input[type=number] { -moz-appearance:textfield; }
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; }
+
+  @media(max-width:800px){
+    .shell{grid-template-columns:1fr;grid-template-rows:56px auto 1fr}
+    .sidebar{display:flex;flex-direction:row;overflow-x:auto;padding:0;border-right:none;border-bottom:1px solid #E2E8F0}
+    .nav-section-label{display:none}
+    .nav-item{border-left:none;border-bottom:3px solid transparent;white-space:nowrap;padding:12px 16px}
+    .nav-item.active{border-left:none;border-bottom-color:#2563EB}
+    .main{padding:16px}
+    .form-grid{grid-template-columns:1fr}
+    .metric-row{grid-template-columns:repeat(2,1fr)}
+    .two-col,.two-col-stat{grid-template-columns:1fr}
+    .germ-grid{grid-template-columns:repeat(2,1fr)}
+    .export-var-list{columns:1}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-logo">Rx</div>
+    <div>
+      <div class="topbar-title">IPM Validación Colombia</div>
+      <div class="topbar-sub">Índice de Peritonitis de Mannheim — Hospital de alta complejidad</div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-badge" id="n-badge">n = 0</div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-section-label">Recolección</div>
+    <div class="nav-item active" onclick="showTab('registro')">
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      Registro de paciente
+    </div>
+    <div class="nav-item" onclick="showTab('pacientes')">
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Lista de pacientes
+    </div>
+    <div class="nav-section-label">Análisis</div>
+    <div class="nav-item" onclick="showTab('analisis')">
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Estadísticas IPM
+    </div>
+    <div class="nav-section-label">Datos</div>
+    <div class="nav-item" onclick="showTab('exportar')">
+      <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exportar / Respaldar
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ===== TAB REGISTRO ===== -->
+    <div id="tab-registro">
+      <div class="section-header">
+        <div class="section-eyebrow">Nuevo caso</div>
+        <div class="section-title">Registro de paciente</div>
+        <div class="section-sub">Complete todos los campos. El puntaje IPM se calcula en tiempo real.</div>
+      </div>
+      <div id="reg-alert" class="hidden"></div>
+
+      <!-- DATOS GENERALES -->
+      <div class="card">
+        <div class="card-title">Datos generales</div>
+        <div class="form-grid">
+          <div class="form-group"><label>ID / Historia clínica</label><input type="text" id="f-id" placeholder="HCL-001"></div>
+          <div class="form-group"><label>Fecha de cirugía</label><input type="date" id="f-fecha"></div>
+          <div class="form-group"><label>Edad (años)</label><input type="number" id="f-edad" min="18" max="120" placeholder="45"></div>
+          <div class="form-group"><label>Causa de peritonitis</label>
+            <select id="f-causa">
+              <option value="">Seleccionar...</option>
+              <option>Apendicitis complicada</option>
+              <option>Perforación gástrica / duodenal</option>
+              <option>Perforación de intestino delgado</option>
+              <option>Perforación colónica</option>
+              <option>Colecistitis complicada</option>
+              <option>Dehiscencia de anastomosis</option>
+              <option>Trauma abdominal</option>
+              <option>Neoplasia perforada</option>
+              <option>Absceso hepático roto</option>
+              <option>Otra</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Desenlace hospitalario</label>
+            <select id="f-desenlace">
+              <option value="">Seleccionar...</option>
+              <option value="0">Alta — sobreviviente</option>
+              <option value="1">Fallecimiento</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Estancia hospitalaria total (días)</label><input type="number" id="f-estancia" min="0" placeholder="10"></div>
+        </div>
+      </div>
+
+      <!-- IPM -->
+      <div class="card">
+        <div class="card-title">Índice de Peritonitis de Mannheim — 8 variables</div>
+        <div class="ipm-row">
+          <span class="ipm-label">Edad mayor de 50 años</span><span class="ipm-pts">+5 pts</span>
+          <div class="seg" id="seg-edad">
+            <button onclick="pick(this,'1')" data-ipm="edad" data-v="0" data-sel="1">No</button>
+            <button onclick="pick(this,'1')" data-ipm="edad" data-v="5">Sí</button>
+          </div>
+        </div>
+        <div class="ipm-row">
+          <span class="ipm-label">Sexo femenino</span><span class="ipm-pts">+5 pts</span>
+          <div class="seg" id="seg-sexo">
+            <button onclick="pick(this,'1')" data-v="0" data-sel="1">No</button>
+            <button onclick="pick(this,'1')" data-v="5">Sí</button>
+          </div>
+        </div>
+        <div class="ipm-row">
+          <span class="ipm-label">Falla orgánica presente</span><span class="ipm-pts">+7 pts</span>
+          <div class="seg" id="seg-falla">
+            <button onclick="pick(this,'1')" data-v="0" data-sel="1">No</button>
+            <button onclick="pick(this,'1')" data-v="7">Sí</button>
+          </div>
+        </div>
+        <div class="ipm-row">
+          <span class="ipm-label">Malignidad presente</span><span class="ipm-pts">+4 pts</span>
+          <div class="seg" id="seg-cancer">
+            <button onclick="pick(this,'1')" data-v="0" data-sel="1">No</button>
+            <button onclick="pick(this,'1')" data-v="4">Sí</button>
+          </div>
+        </div>
+        <div class="ipm-row">
+          <span class="ipm-label">Tiempo de evolución &gt; 24 h</span><span class="ipm-pts">+4 pts</span>
+          <div class="seg" id="seg-tiempo">
+            <button onclick="pick(this,'1')" data-v="0" data-sel="1">No</button>
+            <button onclick="pick(this,'1')" data-v="4">Sí</button>
+          </div>
+        </div>
+        <div class="ipm-row">
+          <span class="ipm-label">Origen no colónico de la sepsis</span><span class="ipm-pts">No col.: +4</span>
+          <div class="seg" id="seg-origen">
+            <button onclick="pick(this,'1')" data-v="0" data-sel="1">Colónico</button>
+            <button onclick="pick(this,'1')" data-v="4">No colónico</button>
+          </div>
+        </div>
+        <div class="ipm-row">
+          <span class="ipm-label">Extensión de la peritonitis</span><span class="ipm-pts">Gral.: +6</span>
+          <div class="seg" id="seg-ext">
+            <button onclick="pick(this,'1')" data-v="0" data-sel="1">Localizada</button>
+            <button onclick="pick(this,'1')" data-v="6">Generalizada</button>
+          </div>
+        </div>
+        <div class="ipm-row">
+          <span class="ipm-label">Características del fluido peritoneal</span><span class="ipm-pts">Pur:+6 / Fec:+12</span>
+          <div class="seg" id="seg-liq">
+            <button onclick="pick(this,'1')"    data-v="0"  data-sel="1">Claro</button>
+            <button onclick="pick(this,'warn')" data-v="6">Purulento</button>
+            <button onclick="pick(this,'red')"  data-v="12">Fecaloideo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCORE -->
+      <div class="score-box">
+        <div>
+          <div class="score-label">Puntaje IPM calculado</div>
+          <div><span class="score-num" id="score-val">0</span><span class="score-max">/ 47 pts</span></div>
+        </div>
+        <div id="risk-pill" class="risk-pill risk-lo">Bajo riesgo (&lt;26)</div>
+      </div>
+
+      <!-- ABORDAJE -->
+      <div class="card">
+        <div class="card-title">Abordaje quirúrgico</div>
+        <div class="ipm-row" style="border-bottom:none;">
+          <span class="ipm-label">Vía de acceso</span>
+          <div class="seg" id="seg-abord">
+            <button onclick="pick(this,'1')" data-extra="abord" data-v="Laparotomía" data-sel="1">Laparotomía</button>
+            <button onclick="pick(this,'1')" data-extra="abord" data-v="Laparoscopia">Laparoscopia</button>
+          </div>
+        </div>
+        <div class="sub-label" style="margin-top:14px;">Procedimiento(s) realizado(s) — selección múltiple</div>
+        <div class="chip-group" id="proc-chips">
+          <span class="chip" data-val="Lavado y drenaje"        onclick="toggleChip(this)">Lavado y drenaje</span>
+          <span class="chip" data-val="Damage control"          onclick="toggleChip(this)">Damage control</span>
+          <span class="chip" data-val="Resección y anastomosis" onclick="toggleChip(this)">Resección y anastomosis</span>
+          <span class="chip" data-val="Estoma"                  onclick="toggleChip(this)">Estoma</span>
+          <span class="chip" data-val="Abdomen abierto"         onclick="toggleChip(this)">Abdomen abierto</span>
+          <span class="chip" data-val="Apendicectomía"          onclick="toggleChip(this)">Apendicectomía</span>
+          <span class="chip" data-val="Colecistectomía"         onclick="toggleChip(this)">Colecistectomía</span>
+          <span class="chip" data-val="__otro__"                onclick="toggleChip(this); toggleOtroProc(this)">Otro</span>
+        </div>
+        <!-- Campo texto para "Otro" procedimiento -->
+        <div id="otro-proc-row" class="hidden" style="margin-top:10px;">
+          <div class="form-group">
+            <label>Especificar otro procedimiento</label>
+            <input type="text" id="f-proc-otro" placeholder="Describa el procedimiento realizado...">
+          </div>
+        </div>
+      </div>
+
+      <!-- UCI -->
+      <div class="card">
+        <div class="card-title">UCI y manejo postoperatorio</div>
+        <div class="ipm-row" style="border-bottom:none;">
+          <span class="ipm-label">Requirió manejo en UCI</span>
+          <div class="seg" id="seg-uci">
+            <button onclick="pick(this,'1'); uciToggle(0)" data-extra="uci" data-v="0" data-sel="1">No</button>
+            <button onclick="pick(this,'uci'); uciToggle(1)" data-extra="uci" data-v="1">Sí</button>
+          </div>
+        </div>
+        <div id="uci-dias-row" class="hidden" style="margin-top:12px;">
+          <div class="form-group"><label>Días de estancia en UCI</label><input type="number" id="f-uci-dias" min="0" placeholder="3"></div>
+        </div>
+      </div>
+
+      <!-- MICROBIOLOGÍA -->
+      <div class="card">
+        <div class="card-title">Microbiología</div>
+
+        <div class="ipm-row">
+          <span class="ipm-label">Se tomó cultivo de líquido peritoneal</span>
+          <div class="seg" id="seg-cult">
+            <button onclick="pick(this,'1'); cultToggle(0)" data-v="0" data-sel="1">No</button>
+            <button onclick="pick(this,'1'); cultToggle(1)" data-v="1">Sí</button>
+          </div>
+        </div>
+
+        <div id="micro-extra" class="hidden">
+          <!-- Resultado del cultivo -->
+          <div class="ipm-row" style="margin-top:6px;">
+            <span class="ipm-label">Resultado del cultivo</span>
+            <div class="seg" id="seg-cultpos">
+              <button onclick="pick(this,'1'); posToggle(0)" data-v="0" data-sel="1">Negativo / pendiente</button>
+              <button onclick="pick(this,'pos'); posToggle(1)" data-v="1">Positivo</button>
+            </div>
+          </div>
+
+          <!-- Bloque positivo -->
+          <div id="micro-positivo" class="hidden">
+
+            <!-- Mono vs Poli -->
+            <div class="ipm-row" style="margin-top:8px;">
+              <span class="ipm-label">Tipo de infección</span>
+              <div class="seg" id="seg-microtipo">
+                <button onclick="pick(this,'1'); microTipoToggle('mono')" data-v="mono" data-sel="1">Monomicrobiano</button>
+                <button onclick="pick(this,'1'); microTipoToggle('poli')" data-v="poli">Polimicrobiano</button>
+              </div>
+            </div>
+
+            <!-- ===== MONOMICROBIANO ===== -->
+            <div id="micro-mono" style="margin-top:14px;">
+              <div class="micro-label">Microorganismo aislado</div>
+              <div class="micro-label" style="color:#2563EB;font-size:10px;">Gram negativos</div>
+              <div class="germ-grid" id="mono-germ-grid">
+                <span class="gc" data-val="Escherichia coli"             onclick="monoGerm(this)">E. coli</span>
+                <span class="gc" data-val="Klebsiella pneumoniae"        onclick="monoGerm(this)">K. pneumoniae</span>
+                <span class="gc" data-val="Klebsiella aerogenes"         onclick="monoGerm(this)">K. aerogenes</span>
+                <span class="gc" data-val="Pseudomonas aeruginosa"       onclick="monoGerm(this)">P. aeruginosa</span>
+                <span class="gc" data-val="Enterobacter cloacae"         onclick="monoGerm(this)">E. cloacae</span>
+                <span class="gc" data-val="Citrobacter freundii"         onclick="monoGerm(this)">C. freundii</span>
+                <span class="gc" data-val="Serratia marcescens"          onclick="monoGerm(this)">S. marcescens</span>
+                <span class="gc" data-val="Morganella morganii"          onclick="monoGerm(this)">M. morganii</span>
+                <span class="gc" data-val="Proteus mirabilis"            onclick="monoGerm(this)">P. mirabilis</span>
+                <span class="gc" data-val="Providencia spp."             onclick="monoGerm(this)">Providencia spp.</span>
+                <span class="gc" data-val="Acinetobacter baumannii"      onclick="monoGerm(this)">A. baumannii</span>
+                <span class="gc" data-val="Stenotrophomonas maltophilia" onclick="monoGerm(this)">S. maltophilia</span>
+              </div>
+              <div class="micro-label" style="color:#2563EB;font-size:10px;">Gram positivos</div>
+              <div class="germ-grid">
+                <span class="gc" data-val="Staphylococcus aureus"      onclick="monoGerm(this)">S. aureus</span>
+                <span class="gc" data-val="Staphylococcus epidermidis" onclick="monoGerm(this)">S. epidermidis</span>
+                <span class="gc" data-val="Enterococcus faecalis"      onclick="monoGerm(this)">E. faecalis</span>
+                <span class="gc" data-val="Enterococcus faecium"       onclick="monoGerm(this)">E. faecium</span>
+                <span class="gc" data-val="Streptococcus spp."         onclick="monoGerm(this)">Streptococcus spp.</span>
+              </div>
+              <div class="micro-label" style="color:#2563EB;font-size:10px;">Hongos / Anaerobios</div>
+              <div class="germ-grid">
+                <span class="gc" data-val="Candida albicans"   onclick="monoGerm(this)">C. albicans</span>
+                <span class="gc" data-val="Candida glabrata"   onclick="monoGerm(this)">C. glabrata</span>
+                <span class="gc" data-val="Candida auris"      onclick="monoGerm(this)">C. auris</span>
+                <span class="gc" data-val="Bacteroides fragilis" onclick="monoGerm(this)">B. fragilis</span>
+                <span class="gc" data-val="Clostridium spp."   onclick="monoGerm(this)">Clostridium spp.</span>
+              </div>
+              <div class="form-group" style="margin-top:8px;margin-bottom:12px;">
+                <label>Otro microorganismo</label>
+                <input type="text" id="f-mono-otro" placeholder="Ej. Fusobacterium spp., polimicrobiano...">
+              </div>
+              <div class="form-group" style="margin-bottom:10px;">
+                <label>Perfil de resistencia</label>
+                <select id="f-mono-resist">
+                  <option value="">Seleccionar...</option>
+                  <optgroup label="Betalactamasas">
+                    <option>BLEE / ESBL — E. coli, K. pneumoniae, P. mirabilis</option>
+                    <option>AmpC inducible — Enterobacter, Citrobacter, Serratia, Morganella</option>
+                    <option>AmpC desreprimida</option>
+                  </optgroup>
+                  <optgroup label="Carbapenemasa / CRE">
+                    <option>CRE — KPC (Klebsiella pneumoniae carbapenemasa)</option>
+                    <option>CRE — NDM (metalo-β-lactamasa)</option>
+                    <option>CRE — OXA-48 / OXA-23</option>
+                    <option>CRE — VIM / IMP</option>
+                    <option>CRAB — A. baumannii resistente a carbapenémicos</option>
+                  </optgroup>
+                  <optgroup label="Pseudomonas multirresistente">
+                    <option>P. aeruginosa MDR — pérdida de porinas, bombas de eflujo, AmpC</option>
+                    <option>P. aeruginosa XDR — extensamente resistente</option>
+                  </optgroup>
+                  <optgroup label="Gram positivos resistentes">
+                    <option>MRSA — S. aureus resistente a meticilina (gen mecA / PBP2a)</option>
+                    <option>MRSE — S. epidermidis resistente a meticilina</option>
+                    <option>VRE — Enterococcus resistente a vancomicina (vanA / vanB)</option>
+                  </optgroup>
+                  <optgroup label="Hongos resistentes">
+                    <option>Candida resistente a azoles — C. glabrata / C. auris</option>
+                    <option>Candida auris multirresistente (MDR/XDR)</option>
+                  </optgroup>
+                  <optgroup label="Clasificación global">
+                    <option>MDR — Multirresistente (≥3 categorías de antimicrobianos)</option>
+                    <option>XDR — Extensamente resistente</option>
+                    <option>PDR — Panresistente</option>
+                    <option>Sensible (sin resistencia relevante)</option>
+                    <option>Resistencia pendiente / antibiograma en curso</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Observaciones microbiológicas</label>
+                <textarea id="f-mono-obs" placeholder="Ej. cobertura empírica iniciada, cambio de esquema..."></textarea>
+              </div>
+            </div>
+
+            <!-- ===== POLIMICROBIANO ===== -->
+            <div id="micro-poli" class="hidden" style="margin-top:14px;">
+              <div id="poli-germenes-list"></div>
+              <button class="btn-add-germ" onclick="addGermenPoli()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir otro microorganismo
+              </button>
+              <div class="form-group" style="margin-top:12px;">
+                <label>Observaciones generales del cultivo</label>
+                <textarea id="f-poli-obs" placeholder="Observaciones generales sobre el perfil polimicrobiano..."></textarea>
+              </div>
+            </div>
+
+          </div><!-- /micro-positivo -->
+        </div><!-- /micro-extra -->
+      </div><!-- /card microbiología -->
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="resetForm()">Limpiar formulario</button>
+        <button class="btn btn-primary" onclick="savePatient()">+ Guardar paciente</button>
+      </div>
+    </div>
+
+    <!-- ===== TAB PACIENTES ===== -->
+    <div id="tab-pacientes" class="hidden">
+      <div class="section-header">
+        <div class="section-eyebrow">Base de datos</div>
+        <div class="section-title">Lista de pacientes</div>
+        <div class="section-sub">Todos los casos registrados.</div>
+      </div>
+      <div id="pt-list"></div>
+    </div>
+
+    <!-- ===== TAB ANÁLISIS ===== -->
+    <div id="tab-analisis" class="hidden">
+      <div class="section-header">
+        <div class="section-eyebrow">Estadísticas</div>
+        <div class="section-title">Análisis del IPM</div>
+        <div class="section-sub">Sensibilidad, especificidad, curva ROC y punto de corte óptimo.</div>
+      </div>
+      <div id="an-content"></div>
+    </div>
+
+    <!-- ===== TAB EXPORTAR ===== -->
+    <div id="tab-exportar" class="hidden">
+      <div class="section-header">
+        <div class="section-eyebrow">Exportar datos</div>
+        <div class="section-title">Exportar / Respaldar</div>
+        <div class="section-sub">Descarga la base de datos completa en XLSX o CSV.</div>
+      </div>
+      <div id="ex-content"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- =================== SELECT DE GÉRMENES (template reutilizable) =================== -->
+<template id="tpl-germ-select">
+  <select class="germ-select-dropdown" style="width:100%;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:7px;font-size:12px;font-family:inherit;color:#1A1A2E;background:#fff;outline:none;">
+    <option value="">Seleccionar microorganismo...</option>
+    <optgroup label="Gram negativos">
+      <option>Escherichia coli</option>
+      <option>Klebsiella pneumoniae</option>
+      <option>Klebsiella aerogenes</option>
+      <option>Pseudomonas aeruginosa</option>
+      <option>Enterobacter cloacae</option>
+      <option>Citrobacter freundii</option>
+      <option>Serratia marcescens</option>
+      <option>Morganella morganii</option>
+      <option>Proteus mirabilis</option>
+      <option>Providencia spp.</option>
+      <option>Acinetobacter baumannii</option>
+      <option>Stenotrophomonas maltophilia</option>
+    </optgroup>
+    <optgroup label="Gram positivos">
+      <option>Staphylococcus aureus</option>
+      <option>Staphylococcus epidermidis</option>
+      <option>Enterococcus faecalis</option>
+      <option>Enterococcus faecium</option>
+      <option>Streptococcus spp.</option>
+    </optgroup>
+    <optgroup label="Hongos / Anaerobios">
+      <option>Candida albicans</option>
+      <option>Candida glabrata</option>
+      <option>Candida auris</option>
+      <option>Bacteroides fragilis</option>
+      <option>Clostridium spp.</option>
+    </optgroup>
+    <option value="__otro__">Otro (especificar)...</option>
+  </select>
+</template>
+
+<template id="tpl-resist-select">
+  <select class="resist-select-dropdown" style="width:100%;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:7px;font-size:12px;font-family:inherit;color:#1A1A2E;background:#fff;outline:none;">
+    <option value="">Perfil de resistencia...</option>
+    <optgroup label="Betalactamasas">
+      <option>BLEE / ESBL — E. coli, K. pneumoniae, P. mirabilis</option>
+      <option>AmpC inducible — Enterobacter, Citrobacter, Serratia, Morganella</option>
+      <option>AmpC desreprimida</option>
+    </optgroup>
+    <optgroup label="Carbapenemasa / CRE">
+      <option>CRE — KPC (Klebsiella pneumoniae carbapenemasa)</option>
+      <option>CRE — NDM (metalo-β-lactamasa)</option>
+      <option>CRE — OXA-48 / OXA-23</option>
+      <option>CRE — VIM / IMP</option>
+      <option>CRAB — A. baumannii resistente a carbapenémicos</option>
+    </optgroup>
+    <optgroup label="Pseudomonas multirresistente">
+      <option>P. aeruginosa MDR — pérdida de porinas, bombas de eflujo, AmpC</option>
+      <option>P. aeruginosa XDR — extensamente resistente</option>
+    </optgroup>
+    <optgroup label="Gram positivos resistentes">
+      <option>MRSA — S. aureus resistente a meticilina (gen mecA / PBP2a)</option>
+      <option>MRSE — S. epidermidis resistente a meticilina</option>
+      <option>VRE — Enterococcus resistente a vancomicina (vanA / vanB)</option>
+    </optgroup>
+    <optgroup label="Hongos resistentes">
+      <option>Candida resistente a azoles — C. glabrata / C. auris</option>
+      <option>Candida auris multirresistente (MDR/XDR)</option>
+    </optgroup>
+    <optgroup label="Clasificación global">
+      <option>MDR — Multirresistente (≥3 categorías de antimicrobianos)</option>
+      <option>XDR — Extensamente resistente</option>
+      <option>PDR — Panresistente</option>
+      <option>Sensible (sin resistencia relevante)</option>
+      <option>Resistencia pendiente / antibiograma en curso</option>
+    </optgroup>
+  </select>
+</template>
+
+<script>
+/* ============================
+   STORAGE
+   ============================ */
+const KEY = 'ipm_col_v5';
+const ld  = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { return []; } };
+const sd  = d  => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e) {} };
+
+/* ============================
+   STATE
+   ============================ */
+let procs   = [];   // procedimientos seleccionados
+let charts  = {};
+let poliCount = 0;  // contador de gérmenes polimicrobiano
+
+/* ============================
+   SEGMENTED PICKER
+   ============================ */
+function pick(btn, selClass) {
+  btn.parentElement.querySelectorAll('button').forEach(b => b.removeAttribute('data-sel'));
+  btn.setAttribute('data-sel', selClass);
+  updScore();
+}
+
+/* ============================
+   SCORE
+   ============================ */
+function updScore() {
+  const keys = ['edad','sexo','falla','cancer','tiempo','origen','ext','liq'];
+  const s = keys.reduce((sum, k) => {
+    const btn = document.querySelector('#seg-' + k + ' button[data-sel]');
+    const v = btn ? btn.dataset.v : 0;
+    return sum + (isNaN(v) ? 0 : +v);
+  }, 0);
+  document.getElementById('score-val').textContent = s;
+  const p = document.getElementById('risk-pill');
+  p.className = 'risk-pill ' + (s >= 26 ? 'risk-hi' : 'risk-lo');
+  p.textContent = s >= 26 ? 'Alto riesgo (≥26)' : 'Bajo riesgo (<26)';
+}
+
+/* ============================
+   TOGGLES
+   ============================ */
+function uciToggle(v)   { document.getElementById('uci-dias-row').classList.toggle('hidden', !v); }
+function cultToggle(v)  { document.getElementById('micro-extra').classList.toggle('hidden', !v); }
+
+function posToggle(v) {
+  document.getElementById('micro-positivo').classList.toggle('hidden', !v);
+}
+
+function microTipoToggle(tipo) {
+  document.getElementById('micro-mono').classList.toggle('hidden', tipo !== 'mono');
+  document.getElementById('micro-poli').classList.toggle('hidden', tipo !== 'poli');
+  if (tipo === 'poli' && poliCount === 0) addGermenPoli();
+}
+
+/* ============================
+   PROCEDIMIENTOS — CHIP TOGGLE
+   ============================ */
+function toggleChip(el) {
+  el.classList.toggle('on');
+  const v = el.dataset.val;
+  if (el.classList.contains('on')) { if (!procs.includes(v)) procs.push(v); }
+  else procs = procs.filter(x => x !== v);
+}
+
+function toggleOtroProc(el) {
+  document.getElementById('otro-proc-row').classList.toggle('hidden', !el.classList.contains('on'));
+  if (!el.classList.contains('on')) document.getElementById('f-proc-otro').value = '';
+}
+
+/* ============================
+   MONOMICROBIANO — selección exclusiva de germen
+   ============================ */
+function monoGerm(el) {
+  // Solo puede haber uno seleccionado
+  document.querySelectorAll('#micro-mono .gc').forEach(g => g.classList.remove('on'));
+  el.classList.add('on');
+}
+
+/* ============================
+   POLIMICROBIANO — añadir/quitar gérmenes
+   ============================ */
+function resistSelectHTML() {
+  const tpl = document.getElementById('tpl-resist-select');
+  return tpl.content.firstElementChild.outerHTML;
+}
+function germSelectHTML() {
+  const tpl = document.getElementById('tpl-germ-select');
+  return tpl.content.firstElementChild.outerHTML;
+}
+
+function addGermenPoli() {
+  poliCount++;
+  const idx = poliCount;
+  const container = document.getElementById('poli-germenes-list');
+  const div = document.createElement('div');
+  div.className = 'germ-card';
+  div.id = 'germ-card-' + idx;
+  div.innerHTML = `
+    <div class="germ-card-header">
+      <span class="germ-card-num">Microorganismo ${idx}</span>
+      <button class="btn-remove-germ" onclick="removeGermenPoli(${idx})">✕ Eliminar</button>
+    </div>
+    <div class="form-grid" style="gap:10px;">
+      <div class="form-group">
+        <label>Microorganismo</label>
+        ${germSelectHTML().replace('class="germ-select-dropdown"', `class="germ-select-dropdown" id="poli-germ-${idx}" onchange="poliGermOtroToggle(this,${idx})"`) }
+      </div>
+      <div class="form-group" id="poli-otro-wrap-${idx}" style="display:none;">
+        <label>Especificar microorganismo</label>
+        <input type="text" id="poli-otro-${idx}" placeholder="Nombre del microorganismo...">
+      </div>
+      <div class="form-group">
+        <label>Perfil de resistencia</label>
+        ${resistSelectHTML().replace('class="resist-select-dropdown"', `class="resist-select-dropdown" id="poli-resist-${idx}"`)}
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:8px;">
+      <label>Observaciones de este microorganismo</label>
+      <textarea id="poli-obs-${idx}" placeholder="Sensibilidades, tratamiento dirigido, notas..." style="min-height:48px;"></textarea>
+    </div>`;
+  container.appendChild(div);
+}
+
+function poliGermOtroToggle(sel, idx) {
+  const wrap = document.getElementById('poli-otro-wrap-' + idx);
+  if (wrap) wrap.style.display = sel.value === '__otro__' ? 'flex' : 'none';
+}
+
+function removeGermenPoli(idx) {
+  const el = document.getElementById('germ-card-' + idx);
+  if (el) el.remove();
+}
+
+function collectPoliGermenes() {
+  const cards = document.querySelectorAll('#poli-germenes-list .germ-card');
+  const result = [];
+  cards.forEach(card => {
+    const id = card.id.replace('germ-card-', '');
+    const germSel = document.getElementById('poli-germ-' + id);
+    let germ = germSel ? germSel.value : '';
+    if (germ === '__otro__') {
+      const otro = document.getElementById('poli-otro-' + id);
+      germ = otro ? otro.value.trim() : '';
+    }
+    const resist = document.getElementById('poli-resist-' + id);
+    const obs    = document.getElementById('poli-obs-' + id);
+    if (germ || (resist && resist.value)) {
+      result.push({
+        germen:  germ,
+        resist:  resist ? resist.value : '',
+        obs:     obs    ? obs.value.trim() : ''
+      });
+    }
+  });
+  return result;
+}
+
+/* ============================
+   COLLECT MICROBIOLOGÍA
+   ============================ */
+function collectMicro() {
+  const cultivo = getSeg('seg-cult');
+  if (!cultivo) return { cultivo: 0, cultPos: 0, tipoInfeccion: '', germenes: [], microObs: '' };
+
+  const cultPos = getSeg('seg-cultpos');
+  if (!cultPos) return { cultivo: 1, cultPos: 0, tipoInfeccion: '', germenes: [], microObs: '' };
+
+  const tipoBtn = document.querySelector('#seg-microtipo button[data-sel]');
+  const tipo    = tipoBtn ? tipoBtn.dataset.v : 'mono';
+
+  if (tipo === 'mono') {
+    const germChip = document.querySelector('#micro-mono .gc.on');
+    const germNombre = germChip ? germChip.dataset.val : '';
+    const germOtro  = document.getElementById('f-mono-otro').value.trim();
+    const resist    = document.getElementById('f-mono-resist').value;
+    const obs       = document.getElementById('f-mono-obs').value.trim();
+    return {
+      cultivo: 1, cultPos: 1, tipoInfeccion: 'monomicrobiano',
+      germenes: [{ germen: germNombre || germOtro, resist, obs }],
+      microObs: obs
+    };
+  } else {
+    const germenes = collectPoliGermenes();
+    const obs      = document.getElementById('f-poli-obs').value.trim();
+    return {
+      cultivo: 1, cultPos: 1, tipoInfeccion: 'polimicrobiano',
+      germenes,
+      microObs: obs
+    };
+  }
+}
+
+function getSeg(segId) {
+  const btn = document.querySelector('#' + segId + ' button[data-sel]');
+  if (!btn) return 0;
+  const v = btn.dataset.v;
+  return (v === undefined || v === null || v === '') ? 0 : (isNaN(v) ? v : parseFloat(v));
+}
+
+/* ============================
+   ALERT
+   ============================ */
+function showAlert(msg, type = 'ok') {
+  const e = document.getElementById('reg-alert');
+  e.className = 'alert al-' + type;
+  e.textContent = msg;
+  e.classList.remove('hidden');
+  setTimeout(() => e.classList.add('hidden'), 4000);
+}
+
+/* ============================
+   SAVE
+   ============================ */
+function savePatient() {
+  const id    = document.getElementById('f-id').value.trim();
+  const fecha = document.getElementById('f-fecha').value;
+  const edad  = parseInt(document.getElementById('f-edad').value) || 0;
+  const causa = document.getElementById('f-causa').value;
+  const des   = document.getElementById('f-desenlace').value;
+  const est   = parseInt(document.getElementById('f-estancia').value) || 0;
+
+  if (!id || !fecha || !edad || !causa || des === '') {
+    showAlert('Completa todos los campos requeridos (ID, fecha, edad, causa y desenlace).', 'warn');
+    return;
+  }
+  const data = ld();
+  if (data.find(p => p.id === id)) { showAlert('Ya existe un paciente con ese ID.', 'err'); return; }
+
+  // IPM
+  const ipmKeys = ['edad','sexo','falla','cancer','tiempo','origen','ext','liq'];
+  const ipmObj  = {};
+  ipmKeys.forEach(k => {
+    const btn = document.querySelector('#seg-' + k + ' button[data-sel]');
+    ipmObj[k] = btn ? (+btn.dataset.v || 0) : 0;
+  });
+  const score = Object.values(ipmObj).reduce((a, b) => a + b, 0);
+
+  // Procedimientos
+  const procOtroChip = document.querySelector('#proc-chips .chip[data-val="__otro__"].on');
+  const procOtroText = procOtroChip ? (document.getElementById('f-proc-otro').value.trim() || 'Otro') : null;
+  const procsExport  = procs.map(p => p === '__otro__' ? (procOtroText || 'Otro') : p);
+
+  // Abordaje
+  const abordBtn = document.querySelector('#seg-abord button[data-sel]');
+  const abord    = abordBtn ? abordBtn.dataset.v : 'Laparotomía';
+
+  // UCI
+  const uciBtn  = document.querySelector('#seg-uci button[data-sel]');
+  const uci     = uciBtn ? (+uciBtn.dataset.v || 0) : 0;
+  const uciDias = parseInt(document.getElementById('f-uci-dias').value) || 0;
+
+  // Micro
+  const micro = collectMicro();
+
+  data.push({
+    id, fecha, edad, causa, desenlace: parseInt(des), estancia: est, score, ipm: ipmObj,
+    extra: { abord, procs: procsExport, uci, uciDias, ...micro },
+    ts: Date.now()
+  });
+  sd(data);
+  document.getElementById('n-badge').textContent = 'n = ' + data.length;
+  showAlert('Paciente ' + id + ' registrado. IPM = ' + score + ' pts.');
+  resetForm();
+}
+
+/* ============================
+   RESET
+   ============================ */
+function resetForm() {
+  ['f-id','f-edad','f-estancia','f-uci-dias','f-mono-otro','f-mono-obs',
+   'f-poli-obs','f-proc-otro'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+
+  document.getElementById('f-fecha').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('f-causa').value = '';
+  document.getElementById('f-desenlace').value = '';
+  const monoResist = document.getElementById('f-mono-resist');
+  if (monoResist) monoResist.value = '';
+
+  procs = []; poliCount = 0;
+
+  // Segs → primer botón
+  document.querySelectorAll('.seg').forEach(seg => {
+    seg.querySelectorAll('button').forEach(b => b.removeAttribute('data-sel'));
+    const first = seg.querySelector('button');
+    if (first) first.setAttribute('data-sel', '1');
+  });
+
+  // Chips
+  document.querySelectorAll('.chip, .gc').forEach(c => c.classList.remove('on'));
+
+  // Ocultar paneles
+  ['uci-dias-row','micro-extra','micro-positivo','micro-mono','micro-poli','otro-proc-row'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.classList.add('hidden');
+  });
+
+  // Limpiar gérmenes polimicrobiano
+  const lista = document.getElementById('poli-germenes-list');
+  if (lista) lista.innerHTML = '';
+
+  // Restaurar mono como default
+  document.getElementById('micro-mono').classList.remove('hidden');
+
+  updScore();
+}
+
+/* ============================
+   DELETE
+   ============================ */
+function deletePatient(id) {
+  if (!confirm('¿Eliminar paciente ' + id + '? Esta acción no se puede deshacer.')) return;
+  sd(ld().filter(p => p.id !== id));
+  document.getElementById('n-badge').textContent = 'n = ' + ld().length;
+  renderPacientes();
+}
+
+/* ============================
+   TAB NAVIGATION
+   ============================ */
+function showTab(tab) {
+  ['registro','pacientes','analisis','exportar'].forEach((t, i) => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+    document.querySelectorAll('.nav-item')[i].classList.toggle('active', t === tab);
+  });
+  if (tab === 'pacientes') renderPacientes();
+  if (tab === 'analisis')  renderAnalisis();
+  if (tab === 'exportar')  renderExportar();
+}
+
+/* ============================
+   RENDER PATIENTS
+   ============================ */
+function renderPacientes() {
+  const data = ld(), el = document.getElementById('pt-list');
+  if (!data.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Sin pacientes registrados</div><div>Ve a Registro para añadir el primer caso.</div></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>Fecha</th><th>Edad</th><th>IPM</th><th>Riesgo</th><th>Abordaje</th><th>UCI</th><th>Cultivo</th><th>Infección</th><th>Gérmenes</th><th>Desenlace</th><th></th></tr></thead>
+    <tbody>${data.sort((a,b)=>b.ts-a.ts).map(p => {
+      const ex = p.extra || {};
+      const germs = (ex.germenes||[]).map(g=>g.germen||'').filter(Boolean).join(', ') || '—';
+      return `<tr>
+        <td style="font-weight:700">${p.id}</td>
+        <td>${p.fecha}</td><td>${p.edad}</td>
+        <td style="font-weight:700;color:${p.score>=26?'#DC2626':'#16A34A'}">${p.score}</td>
+        <td><span class="tag ${p.score>=26?'t-muerto':'t-vivo'}">${p.score>=26?'≥26':'<26'}</span></td>
+        <td style="font-size:11px">${ex.abord||'—'}</td>
+        <td>${ex.uci?'<span class="tag t-uci">Sí</span>':'<span style="font-size:11px;color:#94A3B8">No</span>'}</td>
+        <td style="font-size:11px">${ex.cultivo?(ex.cultPos?'<span class="tag t-pos">Pos.</span>':'Neg.'):'No'}</td>
+        <td style="font-size:11px">${ex.tipoInfeccion||'—'}</td>
+        <td style="font-size:11px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${germs}</td>
+        <td><span class="tag ${p.desenlace?'t-muerto':'t-vivo'}">${p.desenlace?'Fallecido':'Alta'}</span></td>
+        <td><button class="btn-del" onclick="deletePatient('${p.id}')">✕</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>
+    <div style="margin-top:8px;font-size:11px;color:#94A3B8;text-align:right">${data.length} paciente(s)</div>`;
+}
+
+/* ============================
+   STATS ENGINE
+   ============================ */
+function calcStats() {
+  const data = ld(), n = data.length;
+  const dead  = data.filter(p => p.desenlace === 1);
+  const alive = data.filter(p => p.desenlace === 0);
+  const mean  = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0;
+  const sd2   = a => { if (a.length<2) return 0; const m=mean(a); return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)); };
+
+  function cut(c) {
+    let tp=0,fp=0,tn=0,fn=0;
+    data.forEach(p=>{ const pos=p.score>=c; if(pos&&p.desenlace)tp++; else if(pos&&!p.desenlace)fp++; else if(!pos&&!p.desenlace)tn++; else fn++; });
+    return{tp,fp,tn,fn,sens:tp+fn>0?tp/(tp+fn):0,spec:tn+fp>0?tn/(tn+fp):0,vpp:tp+fp>0?tp/(tp+fp):0,vpn:tn+fn>0?tn/(tn+fn):0};
+  }
+  function auc() {
+    if(n<4) return null;
+    const cuts=[...new Set(data.map(p=>p.score))].sort((a,b)=>a-b);
+    const pts=[{s:0,e:1},{s:1,e:0}];
+    cuts.forEach(c=>{const r=cut(c);pts.push({s:r.sens,e:r.spec});});
+    pts.sort((a,b)=>a.e-b.e);
+    let v=0; for(let i=1;i<pts.length;i++) v+=Math.abs(pts[i].e-pts[i-1].e)*(pts[i].s+pts[i-1].s)/2;
+    return{v,pts};
+  }
+  function opt() {
+    const cuts=[...new Set(data.map(p=>p.score))].sort((a,b)=>a-b);
+    let best={y:-1,c:26,sens:0,spec:0,vpp:0,vpn:0};
+    cuts.forEach(c=>{const r=cut(c),y=r.sens+r.spec-1;if(y>best.y)best={y,c,...r};});
+    return best;
+  }
+  const sc=data.map(p=>p.score);
+  return{
+    n,dead:dead.length,alive:alive.length,mortality:n?dead.length/n:0,
+    ms:mean(sc),ss:sd2(sc),md:mean(dead.map(p=>p.score)),ma:mean(alive.map(p=>p.score)),
+    uci:data.filter(p=>p.extra&&p.extra.uci).length,
+    cult:data.filter(p=>p.extra&&p.extra.cultivo).length,
+    cultPos:data.filter(p=>p.extra&&p.extra.cultPos).length,
+    mono:data.filter(p=>p.extra&&p.extra.tipoInfeccion==='monomicrobiano').length,
+    poli:data.filter(p=>p.extra&&p.extra.tipoInfeccion==='polimicrobiano').length,
+    c26:cut(26),opt:opt(),au:auc(),data
+  };
+}
+
+function destroyChart(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
+
+/* ============================
+   RENDER ANÁLISIS
+   ============================ */
+function renderAnalisis() {
+  const el=document.getElementById('an-content'), data=ld();
+  if(data.length<5){el.innerHTML=`<div class="alert al-info">Se necesitan al menos 5 pacientes. Actuales: <strong>${data.length}</strong>. Objetivo: 200.</div>`;return;}
+  const s=calcStats();
+  const pct=(v,d=1)=>(v*100).toFixed(d)+'%', fmt=(v,d=2)=>isNaN(v)?'—':v.toFixed(d);
+  const causas=data.reduce((a,p)=>{a[p.causa]=(a[p.causa]||0)+1;return a;},{});
+  const cL=Object.keys(causas).sort((a,b)=>causas[b]-causas[a]);
+  el.innerHTML=`
+  <div class="metric-row">
+    <div class="metric-card"><div class="m-label">Pacientes</div><div class="m-val">${s.n}</div><div class="m-sub">meta: 200</div></div>
+    <div class="metric-card"><div class="m-label">Mortalidad</div><div class="m-val">${pct(s.mortality)}</div><div class="m-sub">${s.dead} fallecidos</div></div>
+    <div class="metric-card"><div class="m-label">IPM promedio</div><div class="m-val">${fmt(s.ms,1)}</div><div class="m-sub">DE ±${fmt(s.ss,1)}</div></div>
+    <div class="metric-card"><div class="m-label">UCI</div><div class="m-val">${s.uci}</div><div class="m-sub">${pct(s.n?s.uci/s.n:0)} del total</div></div>
+    <div class="metric-card"><div class="m-label">Cult. (+)</div><div class="m-val">${s.cultPos}</div><div class="m-sub">de ${s.cult} tomados</div></div>
+  </div>
+  <hr class="divider">
+  <div class="two-col-stat">
+    <div><div class="an-title">Corte ≥26 (original)</div>
+    <div class="stat-card">${[['Sensibilidad',pct(s.c26.sens)],['Especificidad',pct(s.c26.spec)],['VPP',pct(s.c26.vpp)],['VPN',pct(s.c26.vpn)],['Verdaderos positivos',s.c26.tp],['Falsos positivos',s.c26.fp],['Falsos negativos',s.c26.fn],['Verdaderos negativos',s.c26.tn]].map(([k,v])=>`<div class="stat-row"><span class="stat-k">${k}</span><span class="stat-v">${v}</span></div>`).join('')}</div></div>
+    <div><div class="an-title">Punto óptimo (Youden)</div>
+    <div class="stat-card">${[['Corte óptimo','≥'+s.opt.c],['Índice de Youden',fmt(s.opt.y)],['Sensibilidad',pct(s.opt.sens)],['Especificidad',pct(s.opt.spec)],['VPP',pct(s.opt.vpp)],['VPN',pct(s.opt.vpn)],s.au?['AUC-ROC',fmt(s.au.v)]:null].filter(Boolean).map(([k,v])=>`<div class="stat-row"><span class="stat-k">${k}</span><span class="stat-v">${v}</span></div>`).join('')}</div></div>
+  </div>
+  ${s.au&&s.au.pts.length>3?`<hr class="divider"><div class="an-title">Curva ROC</div><div class="chart-wrap"><canvas id="roc-c"></canvas></div>`:''}
+  <hr class="divider"><div class="an-title">Distribución de causas</div>
+  <div class="chart-wrap" style="height:${Math.max(180,cL.length*32+60)}px"><canvas id="cau-c"></canvas></div>`;
+  setTimeout(()=>{
+    if(s.au&&document.getElementById('roc-c')){
+      destroyChart('roc');
+      const rp=s.au.pts.sort((a,b)=>a.e-b.e);
+      charts['roc']=new Chart(document.getElementById('roc-c'),{type:'line',data:{datasets:[
+        {data:rp.map(p=>({x:+(1-p.e).toFixed(3),y:+p.s.toFixed(3)})),borderColor:'#2563EB',borderWidth:2.5,pointRadius:0,fill:false,tension:0,label:'Curva ROC'},
+        {data:[{x:0,y:0},{x:1,y:1}],borderColor:'#94A3B8',borderWidth:1,borderDash:[5,5],pointRadius:0,fill:false,label:'Referencia'}
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11}}}},scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:'1 – Especificidad'}},y:{min:0,max:1,title:{display:true,text:'Sensibilidad'}}}}});
+    }
+    if(document.getElementById('cau-c')){
+      destroyChart('cau');
+      charts['cau']=new Chart(document.getElementById('cau-c'),{type:'bar',data:{labels:cL,datasets:[{data:cL.map(l=>causas[l]),backgroundColor:'#2563EB',borderRadius:4,label:'Pacientes'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{stepSize:1},grid:{color:'#F1F5F9'}},y:{ticks:{font:{size:11}}}}}});
+    }
+  },80);
+}
+
+/* ============================
+   EXPORT
+   ============================ */
+function buildRows() {
+  return ld().map(p => {
+    const ex = p.extra || {};
+    // Gérmenes como string resumido
+    const germsResumen = (ex.germenes||[]).map(g=>g.germen||'').filter(Boolean).join(' | ');
+    const resistsResumen = (ex.germenes||[]).map(g=>g.resist||'').filter(Boolean).join(' | ');
+    return [
+      p.id, p.fecha, p.edad, p.causa, p.desenlace, p.estancia, p.score,
+      p.ipm.edad?1:0, p.ipm.sexo?1:0, p.ipm.falla?1:0, p.ipm.cancer?1:0,
+      p.ipm.tiempo?1:0, p.ipm.origen?1:0, p.ipm.ext?1:0, p.ipm.liq,
+      ex.abord||'', (ex.procs||[]).join(' | '),
+      ex.uci||0, ex.uciDias||0,
+      ex.cultivo||0, ex.cultPos||0,
+      ex.tipoInfeccion||'',
+      germsResumen, resistsResumen,
+      ex.microObs||''
+    ];
+  });
+}
+
+const HEADERS = [
+  'ID','Fecha','Edad','Causa','Desenlace_0vivo_1muerto','Estancia_dias',
+  'IPM_total','Edad_mayor50','Sexo_femenino','Falla_organica','Malignidad',
+  'Tiempo_mayor24h','Origen_noColonico','Peritonitis_generalizada','Liquido_pts',
+  'Abordaje_quirurgico','Procedimientos','UCI_si1_no0','UCI_dias',
+  'Cultivo_tomado','Cultivo_positivo','Tipo_infeccion',
+  'Germenes_aislados','Perfiles_resistencia','Obs_microbiologicas'
+];
+
+function buildStatsSheet() {
+  const data=ld(); if(data.length<2) return null;
+  const s=calcStats();
+  const pct=v=>(v*100).toFixed(2)+'%', fmt=(v,d=4)=>isNaN(v)?'':+v.toFixed(d);
+  return[
+    ['ANÁLISIS — IPM VALIDACIÓN COLOMBIA'],['Generado',new Date().toLocaleString()],[''],
+    ['ESTADÍSTICOS DESCRIPTIVOS'],
+    ['Pacientes',s.n],['Fallecidos',s.dead],['Sobrevivientes',s.alive],
+    ['Mortalidad',pct(s.mortality)],['IPM promedio',fmt(s.ms,2)],['DE',fmt(s.ss,2)],
+    ['IPM fallecidos',fmt(s.md,2)],['IPM sobrevivientes',fmt(s.ma,2)],
+    ['UCI',s.uci],['Cultivos tomados',s.cult],['Cultivos positivos',s.cultPos],
+    ['Monomicrobianos',s.mono],['Polimicrobianos',s.poli],[''],
+    ['CORTE ≥26'],['Sensibilidad',pct(s.c26.sens)],['Especificidad',pct(s.c26.spec)],
+    ['VPP',pct(s.c26.vpp)],['VPN',pct(s.c26.vpn)],
+    ['VP',s.c26.tp],['FP',s.c26.fp],['FN',s.c26.fn],['VN',s.c26.tn],[''],
+    ['CORTE ÓPTIMO (YOUDEN)'],['Corte óptimo','≥'+s.opt.c],['Índice de Youden',fmt(s.opt.y)],
+    ['Sensibilidad',pct(s.opt.sens)],['Especificidad',pct(s.opt.spec)],
+    ['VPP',pct(s.opt.vpp)],['VPN',pct(s.opt.vpn)],
+    ['AUC-ROC',s.au?fmt(s.au.v):'Datos insuficientes']
+  ];
+}
+
+/* XLSX con hoja extra de gérmenes individuales */
+function buildGermenesSheet() {
+  const data = ld();
+  const rows = [['ID_paciente','Tipo_infeccion','N_germen','Microorganismo','Perfil_resistencia','Observaciones']];
+  data.forEach(p => {
+    const ex = p.extra || {};
+    (ex.germenes || []).forEach((g, i) => {
+      rows.push([p.id, ex.tipoInfeccion||'', i+1, g.germen||'', g.resist||'', g.obs||'']);
+    });
+  });
+  return rows.length > 1 ? rows : null;
+}
+
+function downloadCSV() {
+  const csv = [HEADERS,...buildRows()].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = 'IPM_Colombia_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+function downloadXLSX() {
+  if(typeof XLSX==='undefined'){alert('Librería XLSX no disponible. Usa CSV.');return;}
+  const wb = XLSX.utils.book_new();
+  const ws  = XLSX.utils.aoa_to_sheet([HEADERS,...buildRows()]);
+  ws['!cols'] = HEADERS.map((_,i)=>({wch:[3,16,21,22,23].includes(i)?30:i===24?40:12}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Datos IPM');
+  const ss = buildStatsSheet();
+  if(ss){ const ws2=XLSX.utils.aoa_to_sheet(ss); XLSX.utils.book_append_sheet(wb,ws2,'Análisis'); }
+  const gs = buildGermenesSheet();
+  if(gs){ const ws3=XLSX.utils.aoa_to_sheet(gs); ws3['!cols']=[{wch:12},{wch:16},{wch:8},{wch:30},{wch:40},{wch:40}]; XLSX.utils.book_append_sheet(wb,ws3,'Gérmenes individuales'); }
+  XLSX.writeFile(wb,'IPM_Colombia_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+function clearAll() {
+  if(!confirm('¿Eliminar TODOS los datos? Esta acción no se puede deshacer.')) return;
+  localStorage.removeItem(KEY);
+  document.getElementById('n-badge').textContent='n = 0';
+  renderExportar();
+}
+
+/* ============================
+   RENDER EXPORTAR
+   ============================ */
+function renderExportar() {
+  const data=ld(), el=document.getElementById('ex-content');
+  if(!data.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📁</div><div class="empty-title">Sin datos para exportar</div><div>Registra al menos un paciente primero.</div></div>`;
+    return;
+  }
+  el.innerHTML=`
+  <div class="alert al-info" style="margin-bottom:20px">
+    <strong>${data.length}</strong> paciente(s) — ${HEADERS.length} variables. El XLSX incluye 3 hojas: <em>Datos IPM</em>, <em>Análisis</em> y <em>Gérmenes individuales</em> (un registro por cada microorganismo aislado).
+  </div>
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">Variables exportadas</div>
+      <div class="export-var-list">${HEADERS.map(h=>`<div class="export-var-item">${h.replace(/_/g,' ')}</div>`).join('')}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Resumen de recolección</div>
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:6px;color:#374151"><span>Progreso</span><span>${data.length} / 200</span></div>
+        <div class="prog-wrap"><div class="prog-fill" style="width:${Math.min(100,data.length/2).toFixed(0)}%"></div></div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:4px">${Math.min(100,(data.length/2)).toFixed(0)}% del objetivo</div>
+      </div>
+      <div class="stat-row"><span class="stat-k">Fallecidos</span><span class="stat-v"><span class="tag t-muerto">${data.filter(p=>p.desenlace).length}</span></span></div>
+      <div class="stat-row"><span class="stat-k">Sobrevivientes</span><span class="stat-v"><span class="tag t-vivo">${data.filter(p=>!p.desenlace).length}</span></span></div>
+      <div class="stat-row"><span class="stat-k">IPM ≥26</span><span class="stat-v">${data.filter(p=>p.score>=26).length}</span></div>
+      <div class="stat-row"><span class="stat-k">UCI</span><span class="stat-v">${data.filter(p=>p.extra&&p.extra.uci).length}</span></div>
+      <div class="stat-row"><span class="stat-k">Cultivos positivos</span><span class="stat-v">${data.filter(p=>p.extra&&p.extra.cultPos).length}</span></div>
+      <div class="stat-row"><span class="stat-k">Monomicrobianos</span><span class="stat-v">${data.filter(p=>p.extra&&p.extra.tipoInfeccion==='monomicrobiano').length}</span></div>
+      <div class="stat-row"><span class="stat-k">Polimicrobianos</span><span class="stat-v">${data.filter(p=>p.extra&&p.extra.tipoInfeccion==='polimicrobiano').length}</span></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-success" onclick="downloadXLSX()">⬇ Descargar XLSX</button>
+    <button class="btn btn-ghost"   onclick="downloadCSV()">⬇ Descargar CSV</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-danger"  onclick="clearAll()">🗑 Borrar todos los datos</button>
+  </div>`;
+}
+
+/* ============================
+   INIT
+   ============================ */
+(function init() {
+  document.getElementById('n-badge').textContent = 'n = ' + ld().length;
+  document.getElementById('f-fecha').value = new Date().toISOString().slice(0, 10);
+  // Mostrar mono por defecto cuando se abra el bloque positivo
+  document.getElementById('micro-mono').classList.remove('hidden');
+})();
+</script>
+</body>
+</html>
