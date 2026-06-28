@@ -879,10 +879,6 @@ function renderPacientes() {
       <td style="font-size:11px">${ex.cultivo?(ex.cultPos?'<span class="tag t-pos">Pos.</span>':'Neg.'):'No'}</td>
       <td style="font-size:11px">${ex.tipoInfeccion||'—'}</td>
       <td><span class="tag ${p.desenlace?'t-muerto':'t-vivo'}">${p.desenlace?'Fallecido':'Alta'}</span></td>
-      <td style="display:flex;gap:5px;">
-        <button class="btn-edit" onclick="editPatient('${p._key}','${p.id}')">✏️ Editar</button>
-        <button class="btn-del"  onclick="deletePatient('${p._key}','${p.id}')">✕</button>
-      </td>
     </tr>`;}).join('')}</tbody></table></div>
     <div style="margin-top:8px;font-size:11px;color:#94A3B8;text-align:right">${data.length} paciente(s) — sincronizado en tiempo real · edición y borrado requieren contraseña</div>`;
 }
