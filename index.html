@@ -131,6 +131,32 @@
   code { background:#F1F5F9;padding:2px 6px;border-radius:4px;font-size:12px;font-family:monospace; }
   input[type=number] { -moz-appearance:textfield; }
   input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; }
+
+  /* ---- MODAL OVERLAY ---- */
+  .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px; }
+  .modal-overlay.hidden { display:none; }
+  .modal-box { background:#fff;border-radius:16px;padding:28px 28px 24px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2); }
+  .modal-icon { font-size:36px;margin-bottom:12px;display:block; }
+  .modal-title { font-size:18px;font-weight:700;color:#0D1B3E;margin-bottom:6px; }
+  .modal-sub { font-size:13px;color:#64748B;margin-bottom:20px;line-height:1.6; }
+  .modal-input { width:100%;padding:10px 14px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:15px;font-family:inherit;outline:none;letter-spacing:3px;text-align:center;color:#0D1B3E;margin-bottom:8px; }
+  .modal-input:focus { border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  .modal-error { font-size:12px;color:#DC2626;font-weight:600;min-height:18px;margin-bottom:12px;text-align:center; }
+  .modal-btns { display:flex;gap:10px;justify-content:flex-end; }
+  .modal-btn-cancel { background:#F1F5F9;color:#374151;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer; }
+  .modal-btn-cancel:hover { background:#E2E8F0; }
+  .modal-btn-confirm { background:#DC2626;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer; }
+  .modal-btn-confirm:hover { opacity:.88; }
+  .modal-btn-confirm.blue { background:#2563EB; }
+
+  /* ---- EDIT MODAL ---- */
+  .edit-modal-box { background:#fff;border-radius:16px;padding:24px;max-width:600px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto; }
+  .edit-section { margin-bottom:16px; }
+  .edit-section-title { font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;gap:8px; }
+  .edit-section-title::after { content:'';flex:1;height:1px;background:#F1F5F9; }
+  .btn-edit { background:none;border:1px solid #93C5FD;color:#1D4ED8;padding:4px 9px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600; }
+  .btn-edit:hover { background:#EFF6FF; }
+
   @media(max-width:800px){
     .shell{grid-template-columns:1fr;grid-template-rows:56px auto 1fr}
     .sidebar{display:flex;flex-direction:row;overflow-x:auto;padding:0;border-right:none;border-bottom:1px solid #E2E8F0}
@@ -432,6 +458,85 @@
   </main>
 </div>
 
+<!-- MODAL CONTRASEÑA -->
+<div class="modal-overlay hidden" id="modal-pass">
+  <div class="modal-box">
+    <span class="modal-icon" id="modal-icon">🔒</span>
+    <div class="modal-title" id="modal-title">Acción protegida</div>
+    <div class="modal-sub" id="modal-sub">Ingresa la contraseña de administrador para continuar.</div>
+    <input class="modal-input" type="password" id="modal-pass-input" placeholder="••••••••" maxlength="30" autocomplete="off">
+    <div class="modal-error" id="modal-error"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="modal-btn-confirm" id="modal-confirm-btn" onclick="confirmModal()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PACIENTE -->
+<div class="modal-overlay hidden" id="modal-edit">
+  <div class="edit-modal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:#0D1B3E">✏️ Editar paciente</div>
+        <div style="font-size:12px;color:#64748B;margin-top:2px" id="edit-patient-id"></div>
+      </div>
+      <button class="modal-btn-cancel" onclick="closeEditModal()">✕ Cerrar</button>
+    </div>
+
+    <div class="edit-section">
+      <div class="edit-section-title">Datos generales</div>
+      <div class="form-grid" style="margin-bottom:10px">
+        <div class="form-group"><label>Fecha de cirugía</label><input type="date" id="e-fecha"></div>
+        <div class="form-group"><label>Edad (años)</label><input type="number" id="e-edad" min="18" max="120"></div>
+        <div class="form-group"><label>Causa de peritonitis</label>
+          <select id="e-causa">
+            <option value="">Seleccionar...</option>
+            <option>Apendicitis complicada</option><option>Perforación gástrica / duodenal</option>
+            <option>Perforación de intestino delgado</option><option>Perforación colónica</option>
+            <option>Colecistitis complicada</option><option>Dehiscencia de anastomosis</option>
+            <option>Trauma abdominal</option><option>Neoplasia perforada</option>
+            <option>Absceso hepático roto</option><option>Otra</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Desenlace hospitalario</label>
+          <select id="e-desenlace">
+            <option value="">Seleccionar...</option>
+            <option value="0">Alta — sobreviviente</option>
+            <option value="1">Fallecimiento</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Estancia (días)</label><input type="number" id="e-estancia" min="0"></div>
+        <div class="form-group"><label>Abordaje quirúrgico</label>
+          <select id="e-abord"><option>Laparotomía</option><option>Laparoscopia</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="edit-section">
+      <div class="edit-section-title">IPM — Puntaje manual</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:120px"><label>Puntaje IPM total (0–47)</label><input type="number" id="e-score" min="0" max="47"></div>
+        <div style="font-size:12px;color:#64748B;margin-top:18px">El puntaje se recalcula automáticamente al guardar según las variables originales. Edita aquí solo si necesitas corregir un error de cálculo.</div>
+      </div>
+    </div>
+
+    <div class="edit-section">
+      <div class="edit-section-title">UCI y notas</div>
+      <div class="form-grid">
+        <div class="form-group"><label>UCI (0=No, 1=Sí)</label><select id="e-uci"><option value="0">No</option><option value="1">Sí</option></select></div>
+        <div class="form-group"><label>Días en UCI</label><input type="number" id="e-uci-dias" min="0"></div>
+      </div>
+    </div>
+
+    <div id="edit-error" style="font-size:12px;color:#DC2626;font-weight:600;min-height:18px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="modal-btn-cancel" onclick="closeEditModal()">Cancelar</button>
+      <button class="modal-btn-confirm blue" onclick="saveEdit()">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <template id="tpl-germ-select">
   <select class="germ-sel" style="width:100%;padding:7px 10px;border:1.5px solid #D1D5DB;border-radius:7px;font-size:12px;font-family:inherit;color:#1A1A2E;background:#fff;outline:none;">
     <option value="">Seleccionar microorganismo...</option>
@@ -457,7 +562,7 @@
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDrE5tt_3c1rMsRo6jtIqLo3ZxkKI2Itls",
@@ -508,6 +613,7 @@ setSyncStatus('loading', 'Conectando...');
 // Exponer funciones al scope global
 window._fbPush   = (data) => push(pacientesRef, data);
 window._fbRemove = (key)  => remove(ref(db, 'pacientes/' + key));
+window._fbSet    = (key, data) => set(ref(db, 'pacientes/' + key), data);
 window._getData  = ()     => allData;
 
 // ---- HELPERS ----
@@ -675,9 +781,53 @@ async function savePatient() {
 }
 window.savePatient = savePatient;
 
-async function deletePatient(key) {
-  if (!confirm('¿Eliminar este paciente? La acción no se puede deshacer.')) return;
-  await window._fbRemove(key);
+// ============================================================
+//  SISTEMA DE CONTRASEÑA
+//  Cambia esta clave por la que prefieras
+// ============================================================
+const ADMIN_PASS = 'IPM7410';
+
+let _modalAction  = null;  // función a ejecutar si contraseña es correcta
+let _editKey      = null;  // key Firebase del paciente en edición
+
+// ---- Modal contraseña ----
+function openModal(icon, title, sub, confirmClass, action) {
+  _modalAction = action;
+  document.getElementById('modal-icon').textContent  = icon;
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-sub').textContent   = sub;
+  document.getElementById('modal-error').textContent = '';
+  document.getElementById('modal-pass-input').value  = '';
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.className = 'modal-btn-confirm ' + (confirmClass || '');
+  document.getElementById('modal-pass').classList.remove('hidden');
+  setTimeout(() => document.getElementById('modal-pass-input').focus(), 100);
+}
+function closeModal() { document.getElementById('modal-pass').classList.add('hidden'); _modalAction = null; }
+function confirmModal() {
+  const val = document.getElementById('modal-pass-input').value;
+  if (val !== ADMIN_PASS) {
+    document.getElementById('modal-error').textContent = '❌ Contraseña incorrecta. Inténtalo de nuevo.';
+    document.getElementById('modal-pass-input').value = '';
+    document.getElementById('modal-pass-input').focus();
+    return;
+  }
+  closeModal();
+  if (_modalAction) _modalAction();
+}
+// Permitir Enter en el campo de contraseña
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('modal-pass').classList.contains('hidden')) confirmModal();
+  if (e.key === 'Escape') { closeModal(); closeEditModal(); }
+});
+window.closeModal    = closeModal;
+window.confirmModal  = confirmModal;
+
+// ---- Borrar un paciente (con contraseña) ----
+async function deletePatient(key, patientId) {
+  openModal('🗑️', 'Eliminar paciente', `¿Eliminar al paciente "${patientId}"? Esta acción no se puede deshacer.`, '', async () => {
+    await window._fbRemove(key);
+  });
 }
 window.deletePatient = deletePatient;
 
@@ -719,7 +869,7 @@ function renderPacientes() {
   const data = getDataArray(), el=document.getElementById('pt-list');
   if (!data.length) { el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Sin pacientes registrados</div><div>Los registros de todos los dispositivos aparecerán aquí.</div></div>`; return; }
   el.innerHTML=`<div class="table-wrap"><table>
-    <thead><tr><th>ID</th><th>Fecha</th><th>Edad</th><th>IPM</th><th>Riesgo</th><th>Abordaje</th><th>UCI</th><th>Cultivo</th><th>Tipo inf.</th><th>Desenlace</th><th></th></tr></thead>
+    <thead><tr><th>ID</th><th>Fecha</th><th>Edad</th><th>IPM</th><th>Riesgo</th><th>Abordaje</th><th>UCI</th><th>Cultivo</th><th>Tipo inf.</th><th>Desenlace</th><th>Acciones</th></tr></thead>
     <tbody>${data.map(p=>{const ex=p.extra||{};return`<tr>
       <td style="font-weight:700">${p.id}</td><td>${p.fecha}</td><td>${p.edad}</td>
       <td style="font-weight:700;color:${p.score>=26?'#DC2626':'#16A34A'}">${p.score}</td>
@@ -729,9 +879,12 @@ function renderPacientes() {
       <td style="font-size:11px">${ex.cultivo?(ex.cultPos?'<span class="tag t-pos">Pos.</span>':'Neg.'):'No'}</td>
       <td style="font-size:11px">${ex.tipoInfeccion||'—'}</td>
       <td><span class="tag ${p.desenlace?'t-muerto':'t-vivo'}">${p.desenlace?'Fallecido':'Alta'}</span></td>
-      <td><button class="btn-del" onclick="deletePatient('${p._key}')">✕</button></td>
+      <td style="display:flex;gap:5px;">
+        <button class="btn-edit" onclick="editPatient('${p._key}','${p.id}')">✏️ Editar</button>
+        <button class="btn-del"  onclick="deletePatient('${p._key}','${p.id}')">✕</button>
+      </td>
     </tr>`;}).join('')}</tbody></table></div>
-    <div style="margin-top:8px;font-size:11px;color:#94A3B8;text-align:right">${data.length} paciente(s) — datos en tiempo real desde Firebase</div>`;
+    <div style="margin-top:8px;font-size:11px;color:#94A3B8;text-align:right">${data.length} paciente(s) — sincronizado en tiempo real · edición y borrado requieren contraseña</div>`;
 }
 
 function calcStats() {
@@ -825,10 +978,86 @@ window.downloadXLSX=function(){
   XLSX.writeFile(wb,'IPM_Colombia_'+new Date().toISOString().slice(0,10)+'.xlsx');
 };
 
-window.clearAll=function(){
-  if(!confirm('¿Eliminar TODOS los datos de Firebase? Esta acción es irreversible.'))return;
-  Object.keys(window._getData()).forEach(key=>window._fbRemove(key));
+window.clearAll = function() {
+  openModal('⚠️', 'Borrar TODOS los datos', 'Esta acción eliminará PERMANENTEMENTE todos los pacientes registrados en la base de datos. No se puede deshacer.', '', () => {
+    Object.keys(window._getData()).forEach(key => window._fbRemove(key));
+  });
 };
+
+// ============================================================
+//  SISTEMA DE EDICIÓN
+// ============================================================
+function editPatient(key, patientId) {
+  openModal('✏️', 'Editar paciente', `Ingresa la contraseña para editar los datos del paciente "${patientId}".`, 'blue', () => {
+    openEditModal(key);
+  });
+}
+window.editPatient = editPatient;
+
+function openEditModal(key) {
+  _editKey = key;
+  const data  = window._getData();
+  const p     = data[key];
+  if (!p) return;
+  const ex    = p.extra || {};
+  document.getElementById('edit-patient-id').textContent = 'ID: ' + p.id + '  |  IPM actual: ' + p.score + ' pts';
+  document.getElementById('e-fecha').value      = p.fecha    || '';
+  document.getElementById('e-edad').value       = p.edad     || '';
+  document.getElementById('e-causa').value      = p.causa    || '';
+  document.getElementById('e-desenlace').value  = p.desenlace !== undefined ? String(p.desenlace) : '';
+  document.getElementById('e-estancia').value   = p.estancia || '';
+  document.getElementById('e-score').value      = p.score    || '';
+  document.getElementById('e-abord').value      = ex.abord   || 'Laparotomía';
+  document.getElementById('e-uci').value        = String(ex.uci || 0);
+  document.getElementById('e-uci-dias').value   = ex.uciDias || '';
+  document.getElementById('edit-error').textContent = '';
+  document.getElementById('modal-edit').classList.remove('hidden');
+}
+function closeEditModal() {
+  document.getElementById('modal-edit').classList.add('hidden');
+  _editKey = null;
+}
+window.closeEditModal = closeEditModal;
+
+async function saveEdit() {
+  if (!_editKey) return;
+  const fecha    = document.getElementById('e-fecha').value;
+  const edad     = parseInt(document.getElementById('e-edad').value) || 0;
+  const causa    = document.getElementById('e-causa').value;
+  const des      = document.getElementById('e-desenlace').value;
+  const estancia = parseInt(document.getElementById('e-estancia').value) || 0;
+  if (!fecha || !edad || !causa || des === '') {
+    document.getElementById('edit-error').textContent = '❌ Completa fecha, edad, causa y desenlace.';
+    return;
+  }
+  const data = window._getData();
+  const p    = data[_editKey];
+  if (!p) return;
+  const score = parseInt(document.getElementById('e-score').value) || p.score;
+  const updated = {
+    ...p,
+    fecha, edad, causa,
+    desenlace: parseInt(des),
+    estancia, score,
+    extra: {
+      ...( p.extra || {}),
+      abord:   document.getElementById('e-abord').value,
+      uci:     parseInt(document.getElementById('e-uci').value) || 0,
+      uciDias: parseInt(document.getElementById('e-uci-dias').value) || 0,
+    },
+    editadoEn: new Date().toISOString()
+  };
+  setSyncStatus('loading', 'Guardando...');
+  try {
+    await window._fbSet(_editKey, updated);
+    setSyncStatus('ok', 'Sincronizado ✓');
+    closeEditModal();
+  } catch(e) {
+    document.getElementById('edit-error').textContent = 'Error al guardar: ' + e.message;
+    setSyncStatus('err', 'Error');
+  }
+}
+window.saveEdit = saveEdit;
 
 function renderExportar(){
   const data=getDataArray(),el=document.getElementById('ex-content');
