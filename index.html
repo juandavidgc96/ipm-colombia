@@ -785,7 +785,7 @@ window.savePatient = savePatient;
 //  SISTEMA DE CONTRASEÑA
 //  Cambia esta clave por la que prefieras
 // ============================================================
-const ADMIN_PASS = 'IPM7410';
+const ADMIN_PASS = 'IPM2025';
 
 let _modalAction  = null;  // función a ejecutar si contraseña es correcta
 let _editKey      = null;  // key Firebase del paciente en edición
@@ -879,6 +879,10 @@ function renderPacientes() {
       <td style="font-size:11px">${ex.cultivo?(ex.cultPos?'<span class="tag t-pos">Pos.</span>':'Neg.'):'No'}</td>
       <td style="font-size:11px">${ex.tipoInfeccion||'—'}</td>
       <td><span class="tag ${p.desenlace?'t-muerto':'t-vivo'}">${p.desenlace?'Fallecido':'Alta'}</span></td>
+      <td style="display:flex;gap:5px;">
+        <button class="btn-edit" onclick="editPatient('${p._key}','${p.id}')">✏️ Editar</button>
+        <button class="btn-del"  onclick="deletePatient('${p._key}','${p.id}')">✕</button>
+      </td>
     </tr>`;}).join('')}</tbody></table></div>
     <div style="margin-top:8px;font-size:11px;color:#94A3B8;text-align:right">${data.length} paciente(s) — sincronizado en tiempo real · edición y borrado requieren contraseña</div>`;
 }
@@ -897,13 +901,281 @@ function calcStats() {
 
 function destroyChart(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
 
+/* ============================================================
+   REGRESIÓN LOGÍSTICA — implementación desde cero en JS
+   Algoritmo: descenso de gradiente (Newton-Raphson simplificado)
+   Variables: IPM_total, Edad>50, Sexo_fem, Falla_org, Malignidad
+   ============================================================ */
+function sigmoid(z){ return 1/(1+Math.exp(-z)); }
+
+function logisticRegression(X, y, lr=0.05, iters=1000){
+  const n=y.length, k=X[0].length;
+  let w=new Array(k).fill(0);
+  for(let it=0;it<iters;it++){
+    const grad=new Array(k).fill(0);
+    for(let i=0;i<n;i++){
+      const z=w.reduce((s,wj,j)=>s+wj*X[i][j],0);
+      const err=sigmoid(z)-y[i];
+      for(let j=0;j<k;j++) grad[j]+=err*X[i][j];
+    }
+    for(let j=0;j<k;j++) w[j]-=lr*grad[j]/n;
+  }
+  return w;
+}
+
+function seCoef(X, y, w){
+  // Varianza de coeficientes via matriz de información de Fisher
+  const n=y.length, k=w.length;
+  // Hessiano = X^T W X, W = diag(p*(1-p))
+  const H=Array.from({length:k},()=>new Array(k).fill(0));
+  for(let i=0;i<n;i++){
+    const z=w.reduce((s,wj,j)=>s+wj*X[i][j],0);
+    const p=sigmoid(z), ww=p*(1-p);
+    for(let a=0;a<k;a++) for(let b=0;b<k;b++) H[a][b]+=ww*X[i][a]*X[i][b];
+  }
+  // Invertir solo la diagonal (aproximación) — suficiente para SE
+  return H.map((row,i)=>row[i]>0?Math.sqrt(1/row[i]):0);
+}
+
+function logLikelihood(X,y,w){
+  return y.reduce((s,yi,i)=>{
+    const z=w.reduce((sum,wj,j)=>sum+wj*X[i][j],0);
+    const p=Math.max(1e-9,Math.min(1-1e-9,sigmoid(z)));
+    return s+(yi*Math.log(p)+(1-yi)*Math.log(1-p));
+  },0);
+}
+
+function calcLogistic(data){
+  if(data.length<10) return null;
+  const valid=data.filter(p=>p.desenlace!==undefined&&p.score!==undefined);
+  if(valid.length<10) return null;
+
+  const y=valid.map(p=>p.desenlace);
+
+  // Normalizar IPM para estabilidad numérica
+  const scores=valid.map(p=>p.score);
+  const mScore=scores.reduce((a,b)=>a+b,0)/scores.length;
+  const sdScore=Math.sqrt(scores.reduce((s,v)=>s+(v-mScore)**2,0)/(scores.length-1))||1;
+
+  // ---- MODELO 1: solo IPM ----
+  const X1=valid.map(p=>[ 1, (p.score-mScore)/sdScore ]);
+  const w1=logisticRegression(X1,y,0.1,2000);
+  const se1=seCoef(X1,y,w1);
+  const ll1=logLikelihood(X1,y,w1);
+
+  // ---- MODELO 2: ajustado ----
+  const X2=valid.map(p=>[
+    1,
+    (p.score-mScore)/sdScore,
+    p.ipm?.edad?1:0,
+    p.ipm?.sexo?1:0,
+    p.ipm?.falla?1:0,
+    p.ipm?.cancer?1:0
+  ]);
+  const w2=logisticRegression(X2,y,0.05,3000);
+  const se2=seCoef(X2,y,w2);
+  const ll2=logLikelihood(X2,y,w2);
+
+  // ---- Modelo nulo ----
+  const p0=y.reduce((a,b)=>a+b,0)/y.length;
+  const ll0=y.reduce((s,yi)=>s+(yi*Math.log(Math.max(1e-9,p0))+(1-yi)*Math.log(Math.max(1e-9,1-p0))),0);
+
+  // OR = exp(beta), IC 95% = exp(beta ± 1.96*SE)
+  const orRow=(label,beta,se)=>{
+    const OR=Math.exp(beta);
+    const lo=Math.exp(beta-1.96*se);
+    const hi=Math.exp(beta+1.96*se);
+    const z=se>0?beta/se:0;
+    const p=2*(1-normCDF(Math.abs(z)));
+    return{label,OR,lo,hi,p};
+  };
+
+  // Pseudo R² de Nagelkerke
+  const n=valid.length;
+  const R2cs=1-Math.exp(2*(ll0-ll2)/n);
+  const R2max=1-Math.exp(2*ll0/n);
+  const R2nag=R2cs/R2max;
+
+  // Prueba chi² del modelo
+  const chi2=2*(ll2-ll0);
+  const dfMod=5;
+  const pMod=1-chi2CDF(chi2,dfMod);
+
+  // AUC del modelo ajustado
+  const probs=X2.map(xi=>sigmoid(w2.reduce((s,wj,j)=>s+wj*xi[j],0)));
+  const aucMod=calcAUCfromProbs(probs,y);
+
+  // Hosmer-Lemeshow (10 grupos)
+  const hl=hosmerLemeshow(probs,y,10);
+
+  return{
+    n:valid.length,
+    modelo1:[
+      orRow('IPM total (por punto)', w1[1]/sdScore, se1[1]/sdScore)
+    ],
+    modelo2:[
+      orRow('IPM total (por punto)',    w2[1]/sdScore, se2[1]/sdScore),
+      orRow('Edad > 50 años',           w2[2], se2[2]),
+      orRow('Sexo femenino',            w2[3], se2[3]),
+      orRow('Falla orgánica',           w2[4], se2[4]),
+      orRow('Malignidad',               w2[5], se2[5]),
+    ],
+    R2nag, chi2, dfMod, pMod, aucMod, hl, probs, y
+  };
+}
+
+function normCDF(z){
+  // Aproximación de Abramowitz & Stegun
+  const t=1/(1+0.2316419*Math.abs(z));
+  const d=0.3989423*Math.exp(-z*z/2);
+  const p=d*t*(0.3193815+t*(-0.3565638+t*(1.7814779+t*(-1.8212560+t*1.3302744))));
+  return z>0?1-p:p;
+}
+
+function chi2CDF(x,df){
+  // Regularized gamma (lower) via series — suficiente para df pequeño
+  if(x<=0) return 0;
+  const k=df/2, g=gammaLn(k);
+  return lowerGamma(k,x/2)/Math.exp(g);
+}
+function gammaLn(z){
+  const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y=z,x=z,tmp=x+5.5;
+  tmp=(x+0.5)*Math.log(tmp)-tmp;
+  let ser=1.000000000190015;
+  for(let j=0;j<6;j++) ser+=c[j]/++y;
+  return tmp+Math.log(2.5066282746310005*ser/x);
+}
+function lowerGamma(a,x,iters=200){
+  let sum=1/a,term=1/a;
+  for(let n=1;n<iters;n++){term*=x/(a+n);sum+=term;if(Math.abs(term)<1e-10)break;}
+  return sum*Math.exp(-x+a*Math.log(x));
+}
+
+function calcAUCfromProbs(probs,y){
+  const pairs=probs.map((p,i)=>({p,y:y[i]})).sort((a,b)=>b.p-a.p);
+  let auc=0,pos=0,neg=0;
+  const P=y.reduce((a,b)=>a+b,0), N=y.length-P;
+  if(!P||!N) return 0;
+  let fp=0,tp=0,prevFp=0,prevTp=0;
+  pairs.forEach(({p,y:yi})=>{
+    if(yi) tp++; else fp++;
+    auc+=(fp-prevFp)*(tp+prevTp)/2;
+    prevFp=fp;prevTp=tp;
+  });
+  return auc/(P*N);
+}
+
+function hosmerLemeshow(probs,y,g=10){
+  const sorted=probs.map((p,i)=>({p,y:y[i]})).sort((a,b)=>a.p-b.p);
+  const sz=Math.ceil(sorted.length/g);
+  let chi2=0,df=g-2;
+  for(let i=0;i<g;i++){
+    const grp=sorted.slice(i*sz,(i+1)*sz);
+    if(!grp.length) continue;
+    const obs=grp.reduce((s,x)=>s+x.y,0);
+    const exp=grp.reduce((s,x)=>s+x.p,0);
+    const n=grp.length;
+    if(exp>0&&(n-exp)>0) chi2+=Math.pow(obs-exp,2)/exp+Math.pow((n-obs)-(n-exp),2)/(n-exp);
+  }
+  return{chi2,df,p:1-chi2CDF(chi2,df)};
+}
+
+function pLabel(p){
+  if(p<0.001) return '<0.001';
+  if(p<0.01)  return p.toFixed(3);
+  if(p<0.05)  return p.toFixed(3);
+  return p.toFixed(3);
+}
+function pColor(p){ return p<0.05?'#16A34A':'#64748B'; }
+function pStar(p){ return p<0.001?'***':p<0.01?'**':p<0.05?'*':'ns'; }
+
+function orTableHTML(rows, title){
+  return `<div class="an-title" style="margin-top:0">${title}</div>
+  <div style="overflow-x:auto;margin-bottom:4px"><table>
+    <thead><tr>
+      <th>Variable</th><th>OR</th><th>IC 95% inferior</th><th>IC 95% superior</th><th>p</th><th></th>
+    </tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td style="font-weight:600;font-size:12px">${r.label}</td>
+      <td style="font-weight:700;color:${r.OR>1?'#DC2626':'#16A34A'}">${r.OR.toFixed(3)}</td>
+      <td>${r.lo.toFixed(3)}</td>
+      <td>${r.hi.toFixed(3)}</td>
+      <td style="font-weight:700;color:${pColor(r.p)}">${pLabel(r.p)}</td>
+      <td style="font-size:13px;font-weight:700;color:${pColor(r.p)}">${pStar(r.p)}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>
+  <div style="font-size:11px;color:#94A3B8;margin-bottom:10px">*** p&lt;0.001 &nbsp; ** p&lt;0.01 &nbsp; * p&lt;0.05 &nbsp; ns no significativo</div>`;
+}
+
 function renderAnalisis() {
   const el=document.getElementById('an-content'), data=getDataArray();
   if(data.length<5){el.innerHTML=`<div class="alert al-info">Se necesitan al menos 5 pacientes. Actuales: <strong>${data.length}</strong>. Objetivo: 200.</div>`;return;}
   const s=calcStats();
+  const lr=calcLogistic(data);
   const pct=(v,d=1)=>(v*100).toFixed(d)+'%', fmt=(v,d=2)=>isNaN(v)?'—':v.toFixed(d);
   const causas=data.reduce((a,p)=>{a[p.causa]=(a[p.causa]||0)+1;return a;},{});
   const cL=Object.keys(causas).sort((a,b)=>causas[b]-causas[a]);
+
+  // Sección regresión logística
+  const lrHTML = lr ? `
+  <hr class="divider">
+  <div style="font-size:16px;font-weight:700;color:#0D1B3E;margin-bottom:4px">Regresión logística — Asociación IPM y mortalidad</div>
+  <div style="font-size:12px;color:#64748B;margin-bottom:16px">Variable dependiente: mortalidad hospitalaria (0=alta, 1=fallecimiento). n = ${lr.n} pacientes.</div>
+
+  <div class="two-col-stat" style="margin-bottom:16px">
+    <div class="stat-card">
+      ${orTableHTML(lr.modelo1,'Modelo 1 — Crudo (solo IPM)')}
+    </div>
+    <div class="stat-card">
+      ${orTableHTML(lr.modelo2,'Modelo 2 — Ajustado (IPM + covariables)')}
+    </div>
+  </div>
+
+  <div class="stat-card" style="margin-bottom:12px">
+    <div class="an-title">Ajuste global del modelo ajustado</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      <div style="text-align:center;padding:10px">
+        <div style="font-size:11px;color:#94A3B8;font-weight:700;text-transform:uppercase;margin-bottom:4px">R² Nagelkerke</div>
+        <div style="font-size:22px;font-weight:800;color:#0D1B3E">${lr.R2nag.toFixed(3)}</div>
+        <div style="font-size:11px;color:#64748B">varianza explicada</div>
+      </div>
+      <div style="text-align:center;padding:10px">
+        <div style="font-size:11px;color:#94A3B8;font-weight:700;text-transform:uppercase;margin-bottom:4px">Chi² modelo</div>
+        <div style="font-size:22px;font-weight:800;color:#0D1B3E">${lr.chi2.toFixed(2)}</div>
+        <div style="font-size:11px;color:${pColor(lr.pMod)};font-weight:600">p ${pLabel(lr.pMod)} (df=${lr.dfMod})</div>
+      </div>
+      <div style="text-align:center;padding:10px">
+        <div style="font-size:11px;color:#94A3B8;font-weight:700;text-transform:uppercase;margin-bottom:4px">AUC modelo</div>
+        <div style="font-size:22px;font-weight:800;color:#0D1B3E">${lr.aucMod.toFixed(3)}</div>
+        <div style="font-size:11px;color:#64748B">discriminación</div>
+      </div>
+      <div style="text-align:center;padding:10px">
+        <div style="font-size:11px;color:#94A3B8;font-weight:700;text-transform:uppercase;margin-bottom:4px">Hosmer-Lemeshow</div>
+        <div style="font-size:22px;font-weight:800;color:#0D1B3E">${lr.hl.chi2.toFixed(2)}</div>
+        <div style="font-size:11px;color:${pColor(1-lr.hl.p)};font-weight:600">p ${pLabel(lr.hl.p)} ${lr.hl.p>0.05?'✓ buen ajuste':'⚠ revisar ajuste'}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="background:#EFF6FF;border-color:#BFDBFE;">
+    <div style="font-size:12px;font-weight:700;color:#1D4ED8;margin-bottom:8px">📌 Cómo interpretar estos resultados</div>
+    <div style="font-size:12px;color:#1E40AF;line-height:1.75">
+      <b>OR &gt; 1:</b> mayor riesgo de muerte con ese factor. &nbsp;
+      <b>IC 95% que no cruza 1:</b> significativo estadísticamente. &nbsp;
+      <b>R² Nagelkerke:</b> proporción de variabilidad en mortalidad explicada por el modelo. &nbsp;
+      <b>Hosmer-Lemeshow p &gt; 0.05:</b> el modelo se ajusta bien a los datos observados. &nbsp;
+      <b>AUC modelo:</b> capacidad discriminativa del modelo completo (≥0.8 = bueno, ≥0.9 = excelente).
+    </div>
+  </div>
+
+  <hr class="divider">
+  <div class="an-title">Calibración — Probabilidades predichas vs mortalidad observada</div>
+  <div class="chart-wrap"><canvas id="cal-c"></canvas></div>` : `
+  <hr class="divider">
+  <div class="alert al-info">Se necesitan al menos 10 pacientes con desenlace registrado para calcular la regresión logística. Actuales: <strong>${data.filter(p=>p.desenlace!==undefined).length}</strong>.</div>`;
+
   el.innerHTML=`
   <div class="metric-row">
     <div class="metric-card"><div class="m-label">Pacientes</div><div class="m-val">${s.n}</div><div class="m-sub">meta: 200</div></div>
@@ -920,13 +1192,33 @@ function renderAnalisis() {
     <div class="stat-card">${[['Corte óptimo','≥'+s.opt.c],['Índice de Youden',fmt(s.opt.y)],['Sensibilidad',pct(s.opt.sens)],['Especificidad',pct(s.opt.spec)],['VPP',pct(s.opt.vpp)],['VPN',pct(s.opt.vpn)],s.au?['AUC-ROC',fmt(s.au.v)]:null].filter(Boolean).map(([k,v])=>`<div class="stat-row"><span class="stat-k">${k}</span><span class="stat-v">${v}</span></div>`).join('')}</div></div>
   </div>
   ${s.au&&s.au.pts.length>3?`<hr class="divider"><div class="an-title">Curva ROC</div><div class="chart-wrap"><canvas id="roc-c"></canvas></div>`:''}
+  ${lrHTML}
   <hr class="divider"><div class="an-title">Distribución de causas</div>
   <div class="chart-wrap" style="height:${Math.max(180,cL.length*32+60)}px"><canvas id="cau-c"></canvas></div>`;
+
   setTimeout(()=>{
     if(s.au&&document.getElementById('roc-c')){
       destroyChart('roc');
       const rp=s.au.pts.sort((a,b)=>a.e-b.e);
-      charts['roc']=new Chart(document.getElementById('roc-c'),{type:'line',data:{datasets:[{data:rp.map(p=>({x:+(1-p.e).toFixed(3),y:+p.s.toFixed(3)})),borderColor:'#2563EB',borderWidth:2.5,pointRadius:0,fill:false,tension:0,label:'ROC'},{data:[{x:0,y:0},{x:1,y:1}],borderColor:'#94A3B8',borderWidth:1,borderDash:[5,5],pointRadius:0,fill:false,label:'Ref.'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11}}}},scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:'1 – Especificidad'}},y:{min:0,max:1,title:{display:true,text:'Sensibilidad'}}}}});
+      charts['roc']=new Chart(document.getElementById('roc-c'),{type:'line',data:{datasets:[{data:rp.map(p=>({x:+(1-p.e).toFixed(3),y:+p.s.toFixed(3)})),borderColor:'#2563EB',borderWidth:2.5,pointRadius:0,fill:false,tension:0,label:'ROC IPM'},{data:[{x:0,y:0},{x:1,y:1}],borderColor:'#94A3B8',borderWidth:1,borderDash:[5,5],pointRadius:0,fill:false,label:'Referencia'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11}}}},scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:'1 – Especificidad'}},y:{min:0,max:1,title:{display:true,text:'Sensibilidad'}}}}});
+    }
+    if(lr&&document.getElementById('cal-c')){
+      destroyChart('cal');
+      // Gráfico de calibración: scatter prob predicha vs desenlace real (agrupado)
+      const g=10, sorted=[...lr.probs.map((p,i)=>({p,y:lr.y[i]}))].sort((a,b)=>a.p-b.p);
+      const sz=Math.ceil(sorted.length/g);
+      const calPts=[];
+      for(let i=0;i<g;i++){
+        const grp=sorted.slice(i*sz,(i+1)*sz);
+        if(!grp.length) continue;
+        const predMean=grp.reduce((s,x)=>s+x.p,0)/grp.length;
+        const obsMean=grp.reduce((s,x)=>s+x.y,0)/grp.length;
+        calPts.push({x:predMean,y:obsMean});
+      }
+      charts['cal']=new Chart(document.getElementById('cal-c'),{type:'scatter',data:{datasets:[
+        {label:'Calibración observada',data:calPts,backgroundColor:'#2563EB',pointRadius:7,pointHoverRadius:9},
+        {label:'Calibración perfecta',data:[{x:0,y:0},{x:1,y:1}],type:'line',borderColor:'#94A3B8',borderWidth:1,borderDash:[4,4],pointRadius:0,showLine:true}
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11}}},tooltip:{callbacks:{label:ctx=>`Predicha: ${(ctx.parsed.x*100).toFixed(1)}% | Observada: ${(ctx.parsed.y*100).toFixed(1)}%`}}},scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:'Probabilidad predicha (mortalidad)'}},y:{min:0,max:1,title:{display:true,text:'Mortalidad observada'}}}}});
     }
     if(document.getElementById('cau-c')){
       destroyChart('cau');
